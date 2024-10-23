@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pitch Stats</title>
+    <style>
+        .blue {
+            color: #0C2340;
+        }
+
+        .red {
+            color: #BD1F2D;
+        }
+
+        th {
+            border-bottom: 1px solid gray;
+            font-weight: bold;
+            font-size: 1.2em;
+            cursor: pointer; /* Indicate that the header is clickable */
+        }
+
+        th.sorted-asc::after {
+            content: " 🔼"; /* Arrow for ascending sort */
+        }
+
+        th.sorted-desc::after {
+            content: " 🔽"; /* Arrow for descending sort */
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        h1 {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="red">Trackman Pitch Stats Viewer</h1>
+    <form onsubmit="filterData(); return false;">
+        <label>Starting date</label>
+        <input type="date" id="startdate">
+        <label>End date</label>
+        <input type="date" id="enddate">
+        <button>Filter</button>
+    </form>
+    <table id="data-table">
+        <thead>
+            <tr>
+                <th onclick="sortData('id')">ID</th>
+                <th onclick="sortData('speed')">Speed</th>
+                <th onclick="sortData('result')">Result</th>
+                <th onclick="sortData('datetime')">Datetime</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    
+    <script>
+        let fetchedData = [];
+        let currentSortField = '';
+        let currentSortOrder = 'asc';
+
+        function fetchData() {
+            const url = 'https://compute.samford.edu/zohauth/clients/datajson';
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    fetchedData = data;
+                    displayData(fetchedData);
+                })
+                .catch(error => {
+                    console.error('There was a problem with the fetch operation:', error);
+                });
+        }
+
+        function displayData(data) {
+            const tbody = document.querySelector('#data-table tbody');
+            tbody.innerHTML = '';
+
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                
+                const idCell = document.createElement('td');
+                const link = document.createElement('a');
+                link.href = 'details.html';
+                link.textContent = `Pitch ${item.id}`;
+                idCell.appendChild(link);
+                
+                const speedCell = document.createElement('td');
+                speedCell.textContent = item.speed;
+                
+                const resultCell = document.createElement('td');
+                resultCell.textContent = item.result || '--';
+                
+                const datetimeCell = document.createElement('td');
+                datetimeCell.textContent = item.datetime;
+                
+                row.appendChild(idCell);
+                row.appendChild(speedCell);
+                row.appendChild(resultCell);
+                row.appendChild(datetimeCell);
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterData() {
+            const startdate = new Date(document.getElementById("startdate").value);
+            const enddate = new Date(document.getElementById("enddate").value);
+
+            const filteredData = fetchedData.filter(item => {
+                const itemDate = new Date(item.datetime);
+                return itemDate >= startdate && itemDate <= enddate;
+            });
+
+            displayData(filteredData);
+        }
+
+        function sortData(field) {
+            const order = (currentSortField === field && currentSortOrder === 'asc') ? 'desc' : 'asc';
+            currentSortField = field;
+            currentSortOrder = order;
+
+            fetchedData.sort((a, b) => {
+                if (order === 'asc') {
+                    return a[field] < b[field] ? -1 : 1;
+                } else {
+                    return a[field] > b[field] ? -1 : 1;
+                }
+            });
+
+            // Update sort indicators in the table header
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sorted-asc', 'sorted-desc');
+            });
+            const sortedHeader = document.querySelector(`th:contains(${field})`);
+            sortedHeader.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
+
+            displayData(fetchedData);
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>
